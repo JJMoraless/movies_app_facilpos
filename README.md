@@ -1,66 +1,137 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# movies app facil pos
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## dev
 
-## About Laravel
+1. proyecto desarrollado en php 8.3.0 y laravel 10
+2. para probar la app neesita php y composer
+3. clonado el repositorio debe instalar de****pendencias `composer install`
+4. despues debe crear la base de datos que usara la app para poblar las peliculas a travez de la api
+5. debe asignar las variables de entorno para la base de datos. primero copie `.env.example `y renombrelo a `.env
+6. ejemplo de como deberian estar las variables de entorno de su base de datos postgres:
+   
+   ```
+   # postgreSQL
+   DB_CONNECTION=pgsql
+   DB_HOST=127.0.0.1
+   DB_PORT=5432
+   DB_DATABASE=db_facilpos
+   DB_USERNAME=jhon
+   DB_PASSWORD=1234
+   ```
+7. ejecutar las migraciones `php artisan migrate`
+8. ejecutar la app ` php artisan serve`
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## modelado de datos
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+![1701665828885](images/README/1701665828885.png)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## codigo sql
 
-## Learning Laravel
+codigo sql tambien se encuentra en la carpeta raiz del proyecto  `tables.sql`
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+```
+CREATE TABLE movies (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100),
+    original_language VARCHAR(100),
+    original_title VARCHAR(100),
+    summary TEXT,
+    poster TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+CREATE TABLE genres (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+CREATE TABLE genre_movie (
+    movie_id BIGINT,
+    genre_id BIGINT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (movie_id, genre_id),
+    FOREIGN KEY (movie_id) REFERENCES movies(id) ON DELETE CASCADE,
+    FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
+);
+```
 
-## Laravel Sponsors
+## Algoritmo empleado en el consumo del API
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```
+<?php
 
-### Premium Partners
+namespace App\Utils;
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+use Illuminate\Support\Facades\Http;
+class MoviesApi
+{
+    private static string $apiKey = "620e0ffa7a40a7dc31d8a2be0d18c5b9";
+    private static string $endpointMovies = "https://api.themoviedb.org/3/discover/movie";
+    private static string $endpoinGenres = "https://api.themoviedb.org/3/genre/movie/list";
+    public static function getAllMovies()
+    {
+        $response = Http::get(self::$endpointMovies, [
+            'api_key' => self::$apiKey,
+            'include_video' => false,
+            'language' => 'en-US',
+            'page' => 1,
+            'sort_by' => 'popularity.desc',
+        ]);
+        $movies = $response->json()['results'];
+        return $movies;
+    }
 
-## Contributing
+    public static function getAllGenres()
+    {
+        $response = Http::get(self::$endpoinGenres, [
+            'api_key' => self::$apiKey,
+            'language' => 'en',
+        ]);
+        $genres = $response->json()['genres'];
+        return $genres;
+    }
+}
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+// controller
+public function getMoviesFromApi()
+    {
+        try {
+            $isMoviesCount = Movie::count();
+            if ($isMoviesCount > 0) return redirect('/movies');
 
-## Code of Conduct
+            $moviesFromApi = MoviesApi::getAllMovies();
+            $genresFromApi = MoviesApi::getAllGenres();
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+            foreach ($genresFromApi as $genre) {
+                if (Genre::where('name', $genre['name'])->exists()) {
+                    continue;
+                }
 
-## Security Vulnerabilities
+                Genre::create([
+                    'name' => $genre['name'],
+                    'id' => $genre['id'],
+                ]);
+            }
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+            foreach ($moviesFromApi as $movie) {
+                $newMovie = Movie::create([
+                    'name' => $movie['title'],
+                    'original_language' => $movie['original_language'],
+                    'original_title' => $movie['original_title'],
+                    'summary' => $movie['overview'],
+                    'poster' => "https://image.tmdb.org/t/p/w500/" . $movie['poster_path'],
+                ]);
+                $newMovie->genres()->attach($movie['genre_ids']);
+            }
+            $movies = Movie::with('genres')->get();
+            return view('movies.index', compact('movies'));
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+```
 
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
