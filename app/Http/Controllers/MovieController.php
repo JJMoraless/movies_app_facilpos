@@ -25,32 +25,39 @@ class MovieController extends Controller
      */
     public function getMoviesFromApi()
     {
-        $genresFromApi = MoviesApi::getAllGenres();
-        foreach ($genresFromApi as $genre) {
-            if (Genre::where('name', $genre['name'])->exists()) {
-                continue;
-            }
-            Genre::create([
-                'name' => $genre['name'],
-                'id' => $genre['id'],
-            ]);
-        }
-        $isMoviesCount = Movie::count();
-        if ($isMoviesCount > 0) return redirect('/movies');
+        try {
+            $isMoviesCount = Movie::count();
+            if ($isMoviesCount > 0) return redirect('/movies');
 
-        $moviesFromApi = MoviesApi::getAllMovies();
-        foreach ($moviesFromApi as $movie) {
-            $newMovie = Movie::create([
-                'name' => $movie['title'],
-                'original_language' => $movie['original_language'],
-                'original_title' => $movie['original_title'],
-                'summary' => $movie['overview'],
-                'poster' => "https://image.tmdb.org/t/p/w500/" . $movie['poster_path'],
-            ]);
-            $newMovie->genres()->attach($movie['genre_ids']);
+            $moviesFromApi = MoviesApi::getAllMovies();
+            $genresFromApi = MoviesApi::getAllGenres();
+
+            foreach ($genresFromApi as $genre) {
+                if (Genre::where('name', $genre['name'])->exists()) {
+                    continue;
+                }
+
+                Genre::create([
+                    'name' => $genre['name'],
+                    'id' => $genre['id'],
+                ]);
+            }
+
+            foreach ($moviesFromApi as $movie) {
+                $newMovie = Movie::create([
+                    'name' => $movie['title'],
+                    'original_language' => $movie['original_language'],
+                    'original_title' => $movie['original_title'],
+                    'summary' => $movie['overview'],
+                    'poster' => "https://image.tmdb.org/t/p/w500/" . $movie['poster_path'],
+                ]);
+                $newMovie->genres()->attach($movie['genre_ids']);
+            }
+            $movies = Movie::with('genres')->get();
+            return view('movies.index', compact('movies'));
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-        $movies = Movie::with('genres')->get();
-        return view('movies.index', compact('movies'));
     }
 
 
